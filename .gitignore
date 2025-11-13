@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Pickle files
+*.pkl
+*.pckl
+*.joblib
+
+# Environment variable files
+.env
+.env.*

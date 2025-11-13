@@ -1,0 +1,14 @@
+[project]
+name = "agent-controlled-browser-actions"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain>=1.0.4",
+    "langgraph>=1.0.2",
+    "langgraph-cli[inmem]>=0.4.7",
+    "pytest-playwright>=0.7.1",
+    "langchain-ollama>=0.3.3",
+    "langchain-openai>=1.0.2",
+]
