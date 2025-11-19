@@ -3,7 +3,7 @@ from langgraph_sdk import get_client
 from langgraph.types import Command
 import asyncio
 import uuid
-from graphs.vanilla_graph.graph import app
+from graphs.vanilla_graph.graph import VanillaGraphBuilder
 import os
 from dotenv import load_dotenv
 import logging
@@ -39,10 +39,9 @@ client = get_client(url="http://localhost:2024")
 
 async def main():
     config = {"configurable": {"thread_id": str(uuid.uuid4())}, "run_name": "vanilla_graph_run"}
-    
-    # Initial input
-    current_input = {"message": "hello, Navigate to langchain docs and search for playwright integration."}
-    
+    current_input = {"messages": ["hello, Navigate to langchain docs and search for playwright integration."]}
+    graph_builder = VanillaGraphBuilder()
+    app = graph_builder.build()
     while True:
         async for chunk in app.astream(current_input, config=config):
             logger.info(f"CHUNK: {chunk}")

@@ -20,8 +20,6 @@ class BrowserNodeAdapter:
         }
 
     async def create_browser_session(self, state: VanillaGraphState) -> VanillaGraphState:
-        if (state.continue_session):
-            return state
         # Placeholder for creating a browser session
         playwright = await async_playwright().start()
         chromium = playwright.chromium # or "firefox" or "webkit".

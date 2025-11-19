@@ -17,4 +17,3 @@ class VanillaGraphState(BaseModel):
     browser_granular_steps: List[str] = []
     action_results: List[str] = []
     final_report: str | None = None
-    continue_session: bool = False

@@ -1,6 +1,5 @@
 import os
 from langchain_ollama.chat_models import ChatOllama
-from langchain_openai.chat_models import ChatOpenAI
 from langchain.agents import create_agent
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
@@ -10,13 +9,10 @@ from graphs.vanilla_graph.nodes.vanilla_node_adapter import VanillaNodeAdapter
 from graphs.vanilla_graph.nodes.browser_node_adapter import BrowserNodeAdapter
 import asyncio
 
-from dotenv import load_dotenv
-load_dotenv()
 
 class VanillaGraphBuilder:
     def __init__(self):
         self.chat_llm = ChatOllama(model="llama3.1:8b", temperature=0)
-        self.chat_llm = ChatOpenAI(model="gpt-4", temperature=0)
         self.chat_llm_with_agent = create_agent(
             model=self.chat_llm,
             tools=[],
@@ -46,7 +42,6 @@ class VanillaGraphBuilder:
         workflow_edges = [
             (START, "check_for_browser_actions"),
             ("human_get_instructions", "check_for_browser_actions"),
-            ("continue_session_new_instructions", "check_for_browser_actions"),
             ("extract_browser_actions", "human_check_for_additional_instructions"),
             ("human_get_additional_instructions", "check_for_browser_actions"),
             ("break_browser_actions_into_granular_steps", "browser_workflow"),

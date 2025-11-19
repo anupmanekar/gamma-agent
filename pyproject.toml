@@ -11,4 +11,5 @@ dependencies = [
     "pytest-playwright>=0.7.1",
     "langchain-ollama>=0.3.3",
     "langchain-openai>=1.0.2",
+    "crawlee[playwright]>=1.0.4",
 ]

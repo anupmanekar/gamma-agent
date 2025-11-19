@@ -24,7 +24,6 @@ class VanillaNodeAdapter:
         self.browser_page = None
 
     def human_get_instructions(self, state: VanillaGraphState) -> VanillaGraphState:
-        state.continue_session = False
         message = """
         Please provide the instructions for the browser actions to be performed.
         """
@@ -53,12 +52,8 @@ class VanillaNodeAdapter:
         
         response = self.chat_llm.invoke([("human", prompt)])
         if response.content.strip().lower() == "false":
-            if state.continue_session:
-                state.messages = []
-                return Command(goto="continue_session_new_instructions", update={"messages": []})
-            else:
-                state.messages = []
-                return Command(goto="human_get_instructions", update={"messages": []})
+            state.messages = []
+            return Command(goto="human_get_instructions", update={"messages": []})
         else:
             return Command(goto="extract_browser_actions")
 
@@ -73,24 +68,16 @@ class VanillaNodeAdapter:
     #     return state
     
     def extract_browser_actions(self, state: VanillaGraphState) -> VanillaGraphState:
-        if state.continue_session:
-            prompt = f"""
-            The current browser session is ongoing, so do not include any instructions like "open browser" or "create browser session". 
-            Instead, infer what are the new actions that need browser to be invoked in given instructions.
-            Instructions: "{state.messages[-1]}"
-            Output should be list of browser actions to be performed, one action per line. Dont include any explanations or other additional text.
-            """
-        else:
-            prompt = f"""
-            Infer what are the actions that need browser to be invoked in given instructions. 
-            The new instructions may be continuations of earlier browser actions so consider the context {state.browser_actions} and share only the new inferred browser actions.
-            
-            For example: if user says "Go to the next page" and earlier action was "Navigate to example.com", then infer the new action as "Navigate to example.com/nextpage".
+        prompt = f"""
+        Infer what are the actions that need browser to be invoked in given instructions. 
+        The new instructions may be continuations of earlier browser actions so consider the context {state.browser_actions} and share only the new inferred browser actions.
+        
+        For example: if user says "Go to the next page" and earlier action was "Navigate to example.com", then infer the new action as "Navigate to example.com/nextpage".
 
-            Instructions: "{state.messages[-1]}"
-            
-            Output should be list of browser actions to be performed, one action per line. Dont include any explanations or other additional text.
-            """
+        Instructions: "{state.messages[-1]}"
+        
+        Output should be list of browser actions to be performed, one action per line. Dont include any explanations or other additional text.
+        """
         
         response = self.chat_llm.invoke([("human", prompt)])
         actions = response.content.strip().splitlines()
@@ -132,30 +119,13 @@ class VanillaNodeAdapter:
             return Command(goto="human_get_instructions", update={"messages": [], "browser_actions": []})
         
     def break_browser_actions_into_granular_steps(self, state: VanillaGraphState) -> VanillaGraphState:
-        if state.continue_session:
-            prompt = f"""
-            The following browser actions have been extracted:\n{state.browser_actions}\n
-            Please break down each action into more granular UI steps but do not include steps like "open browser" or "click on address bar" or "navigate to url" or "create browser session" or "wait for page to load" as these are handled by the system.
-            For example, "Log into account" can be broken down into "Navigate to login page", "Enter username", "Enter password", "Click login button".
-            if the parent action is "Navigate to example.com", then granular step should just be "Open following URL: example.com". Do not include any browser actions that are already handled by the system.
-            Provide the list of granular UI steps, one step per line. Dont include any explanations or other additional text. 
-            Do not format it like header and sub header of actions/steps. Just collate all the granular steps in a single list.
-            Also dont include original browser actions in the list.
-            Do not include steps like "open browser" or "click on address bar" or "create browser session" or "wait for page to load" as these are handled by the system.
-            """
-        else:
-            prompt = f"""
-            The following browser actions have been extracted:\n{state.browser_actions}\n
-            Please break down each action into more granular UI steps.
-            For task completion, assumption is that browser is already open with website already loaded. So the actions are being performed on already opened browser page.
-            For example, 
-            1. "Log into account" can be broken down into "Navigate to login page", "Enter username", "Enter password", "Click login button".
-            2. "Search for a term" can be broken down into "Search for term in existing search bar", "Click search button".
-            Provide the list of granular UI steps, one step per line. Dont include any explanations or other additional text. 
-            Do not format it like header and sub header of actions/steps. Just collate all the granular steps in a single list.
-            Also dont include original browser actions in the list.
-            Do not include steps like "open browser" or "click on address bar" or "create browser session" or "wait for page to load" as these are handled by the system.
-            """
+        prompt = f"""
+        The following browser actions have been extracted:\n{state.browser_actions}\n
+        Please break down each action into more granular steps if possible. 
+        For example, "Log into account" can be broken down into "Navigate to login page", "Enter username", "Enter password", "Click login button".
+        Provide the updated list of granular steps, one step per line. Dont include any explanations or other additional text. 
+        Also dont include original browser actions in the list.
+        """
         response = self.chat_llm.invoke([("human", prompt)])
         steps = response.content.strip().splitlines()
         state.browser_granular_steps = [step.strip() for step in steps if step.strip()]
@@ -169,11 +139,9 @@ class VanillaNodeAdapter:
         # state.final_report = report
         return state
 
-    def human_start_new_task(self, state: VanillaGraphState) -> Command[Literal["final_task", "human_get_instructions","continue_session_new_instructions"]]:
+    def human_start_new_task(self, state: VanillaGraphState) -> Command[Literal["final_task", "human_get_instructions"]]:
         message = """
-        Do you want to start a new task? If yes, please provide the new instructions. 
-        if not, then continue with your instructions in existing browser session.
-        if you want to end all tasks, please respond with exit/quit.
+        Do you want to start a new task? If yes, please provide the new instructions.
         """
         human_response = interrupt({
             "question": message,
@@ -186,10 +154,8 @@ class VanillaNodeAdapter:
             state.action_results = []
             state.final_report = None
             return Command(goto="human_get_instructions", update={"messages": state.messages, "browser_actions": [], "browser_granular_steps": [], "action_results": [], "final_report": None})
-        elif str(human_response).upper() in ["EXIT", "QUIT"]:
-            return Command(goto="final_task")
         else:
-            return Command(goto="continue_session_new_instructions")
+            return Command(goto="final_task")
         
     def final_task(self, state: VanillaGraphState) -> VanillaGraphState:
         message = "All tasks completed. Thank you!"
@@ -207,15 +173,4 @@ class VanillaNodeAdapter:
     #     state.final_report = None
     #     return Command(goto="human_get_instructions", update={"messages": state.messages, "browser_actions": [], "browser_granular_steps": [], "action_results": [], "final_report": None})
 
-    def continue_session_new_instructions(self, state: VanillaGraphState) -> VanillaGraphState:
-        state.continue_session = True
-        state.browser_actions = []
-        state.browser_granular_steps = []
-        state.action_results = []
-        state.final_report = None
-        message = """
-        Please provide any new instructions for the ongoing browser session.
-        """
-        human_response = interrupt(message)
-        state.messages.append(human_response)
-        return state
+    
